@@ -1,7 +1,9 @@
 # Injust-rs
 
 ## A simple DLL injector built in rust
-Currently this is a simple proof-of-concept injector built in rust for target windows applications.
+
+Currently this is a simple proof-of-concept injector built in rust for target windows applications. Build upon the [windows-rs](https://github.com/microsoft/windows-rs) bindings and [ratatui](https://github.com/ratatui/ratatui) UI.
+
 The injector follows a classic:
 
 
@@ -38,14 +40,18 @@ What does my project currently aim to implement?
 
 As previously afformentioned, this crate used a generic toolchain from the windows c abstrations to hook into a process, allocate and write to memory and fire a remote thread for execution
 
-To start, we use the [windows-sys](https://crates.io/crates/windows-sys) crate -- not to confuse with the [windows](https://crates.io/crates/windows) crate. 
+To start, we use the [windows-sys](https://crates.io/crates/windows-sys) crate -- not to confuse with the [windows](https://crates.io/crates/windows) crate. What's the difference?
+
+**windows-sys** 
+> Raw bindings for C-style Windows APIs.
+
 **windows**
->>Raw bindings for C-style Windows APIs.
+> Safer bindings including C-style APIs as well as COM and WinRT APIs.
 
-
+Essentially, windows-sys, allows for lower overhead and memory space at the cost of type safety and error handling. However; this is something we can, and did implement within our code as needed. By doing this we reduce redundancy, and if in a real developemnt environment, create a more efficient injector.
 
 ```rust
-// 
+
 ```
 
 
