@@ -67,6 +67,8 @@ fn main() -> Result<()> {
             r"C:\Users\camst\RustroverProjects\injust-rs\target\release\inject_lib.dll".to_string();
         let mut agent: OxidisingAgent = OxidisingAgent::new(proc.pid, dll_path)?;
         agent.oxidise()?;
+
+        agent.cleanup();
     }
     Ok(())
 }

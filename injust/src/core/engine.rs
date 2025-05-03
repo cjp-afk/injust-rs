@@ -68,4 +68,10 @@ impl OxidisingAgent {
 
         Ok(())
     }
+
+    pub fn cleanup(mut self) -> io::Result<()> {
+        self.phandle.close()?;
+        self.rmemory.de_alloc()?;
+        Ok(())
+    }
 }
