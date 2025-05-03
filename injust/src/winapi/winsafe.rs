@@ -4,11 +4,15 @@ use crate::winapi::types::{Process, SafeHANDLE};
 use std::ffi::c_void;
 
 use std::io;
+use std::mem::transmute;
+use std::ptr::null_mut;
 
+use windows_sys::core::PCSTR;
 use windows_sys::Win32::Foundation::{BOOL, HANDLE, HWND, LPARAM, RECT};
+use windows_sys::Win32::Foundation::{FARPROC, HINSTANCE};
 use windows_sys::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
-use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
 use windows_sys::Win32::System::Diagnostics::Debug::WriteProcessMemory;
+use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
 use windows_sys::Win32::System::Threading::{
     CreateRemoteThread, GetCurrentProcessId, OpenProcess, LPTHREAD_START_ROUTINE,
     PROCESS_ACCESS_RIGHTS,
@@ -124,28 +128,46 @@ pub fn safe_write_process_memory(
 }
 
 pub fn safe_create_remote_thread(
-    phandle: HANDLE,
-    lpthrdattr: Option<*const SECURITY_ATTRIBUTES>,
-    dwstksize: usize,
-    lpstaddr: LPTHREAD_START_ROUTINE,
-    lpparam: *const c_void,
-    dwcreationflags: u32,
-    lpthreadid: *mut u32,
-) -> io::Result<(SafeHANDLE)> {
-    let thandle = unsafe {
+    process: HANDLE,
+    start: FARPROC,
+    param: *mut c_void,
+    flags: u32,
+) -> io::Result<SafeHANDLE> {
+    let start_routine: LPTHREAD_START_ROUTINE = unsafe { transmute(start) };
+
+    let mut tid = 0u32;
+    let h_thread = unsafe {
         CreateRemoteThread(
-            phandle,
-            lpthrdattr.unwrap_or(std::ptr::null()),
-            dwstksize,
-            lpstaddr,
-            lpparam,
-            dwcreationflags,
-            lpthreadid,
+            process,
+            null_mut(),
+            0,
+            start_routine,
+            param,
+            flags,
+            &mut tid,
         )
     };
-    if thandle.is_null() {
+    if h_thread.is_null() {
         Err(io::Error::last_os_error())
     } else {
-        Ok(SafeHANDLE::new(thandle)?)
+        Ok(SafeHANDLE::new(h_thread)?)
+    }
+}
+
+pub fn safe_wait_for_single_object(h: HANDLE, ms: u32) -> io::Result<()> {
+    use windows_sys::Win32::System::Threading::WaitForSingleObject;
+    let res = unsafe { WaitForSingleObject(h, ms) };
+    if res == 0xFFFFFFFF {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+pub fn get_loadlibraryw_addr() -> FARPROC {
+    unsafe {
+        // Kernel32 is guaranteed to be loaded already.
+        let k32: HINSTANCE = GetModuleHandleA(c"kernel32.dll".as_ptr() as PCSTR);
+        GetProcAddress(k32, c"LoadLibraryW".as_ptr() as PCSTR)
     }
 }

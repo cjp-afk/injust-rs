@@ -64,10 +64,10 @@ fn main() -> Result<()> {
     terminal.show_cursor()?;
 
     if let Some(proc) = app.selected() {
-        let dll_path: String = "/path/to/dll".to_string();
+        let dll_path: String =
+            r"C:\Users\camst\RustroverProjects\injust-rs\target\release\inject_lib.dll".to_string();
         let mut agent: OxidisingAgent = OxidisingAgent::new(proc.pid, dll_path)?;
         agent.oxidise()?;
     }
-
     Ok(())
 }

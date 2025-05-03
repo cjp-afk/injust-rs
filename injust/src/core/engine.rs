@@ -2,7 +2,8 @@
 
 use crate::winapi::types::{RemoteMemory, SafeHANDLE};
 use crate::winapi::winsafe::{
-    safe_create_remote_thread, safe_open_process, safe_write_process_memory,
+    get_loadlibraryw_addr, safe_create_remote_thread, safe_open_process,
+    safe_wait_for_single_object, safe_write_process_memory,
 };
 use std::ffi::OsStr;
 use std::io;
@@ -10,8 +11,8 @@ use std::os::windows::ffi::OsStrExt;
 use std::ptr::null_mut;
 use windows_sys::Win32::System::Memory::{MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE};
 use windows_sys::Win32::System::Threading::{
-    PROCESS_CREATE_THREAD, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ,
-    PROCESS_VM_WRITE,
+    INFINITE, PROCESS_CREATE_THREAD, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION,
+    PROCESS_VM_READ, PROCESS_VM_WRITE,
 };
 
 pub struct OxidisingAgent {
@@ -34,8 +35,6 @@ impl OxidisingAgent {
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
-
-        let byte_count = path_w.len() * size_of::<u16>();
 
         let rmemory: RemoteMemory = RemoteMemory::new(
             phandle.as_raw(),
@@ -60,7 +59,12 @@ impl OxidisingAgent {
             null_mut(),
         )?;
 
-        safe_create_remote_thread(self.phandle.as_raw(), None, 0)?;
+        let ll_addr = get_loadlibraryw_addr();
+
+        let thread =
+            safe_create_remote_thread(self.phandle.as_raw(), ll_addr, self.rmemory.address(), 0)?;
+
+        safe_wait_for_single_object(thread.as_raw(), INFINITE)?;
 
         Ok(())
     }
