@@ -2,5 +2,5 @@ mod app;
 mod winapi;
 
 fn main() {
-    println!("Hello!");
+    println!("Hello, World!");
 }
