@@ -119,6 +119,8 @@ impl SafeHANDLE {
     }
 }
 ```
+
+
 ```rust
 impl Drop for SafeHANDLE {
     fn drop(&mut self) {
