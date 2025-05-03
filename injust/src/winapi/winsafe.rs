@@ -29,7 +29,7 @@ pub fn safe_enum_windows() -> io::Result<Vec<Process>> {
 
         // DWM cloak status
         let mut cloaked: u32 = 0;
-        let _ = DwmGetWindowAttribute(
+        DwmGetWindowAttribute(
             hwnd,
             DWMWA_CLOAKED as u32,
             &mut cloaked as *mut _ as *mut _,

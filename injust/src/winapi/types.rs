@@ -27,7 +27,7 @@ impl SafeHANDLE {
         self.0
     }
 
-    pub fn close(&self) -> io::Result<()> {
+    pub fn close(self) -> io::Result<()> {
         let handle = self.0;
 
         std::mem::forget(self);

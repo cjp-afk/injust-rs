@@ -1,5 +1,5 @@
-mod types;
+pub(crate) mod types;
 mod utils;
-mod winsafe;
+pub(crate) mod winsafe;
 
 pub use winsafe::safe_enum_windows;
