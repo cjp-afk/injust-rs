@@ -6,11 +6,9 @@ use windows_sys::Win32::{
     UI::WindowsAndMessaging::{MessageBoxW, MB_OK},
 };
 
-// Helper: convert a Rust string literal to a 0-terminated wide string at compile time.
 macro_rules! wide {
     ($lit:literal) => {{
         const WIDE: &[u16] = {
-            // Encode UTF-16, append \0
             const CHARS: &[u16] = &{
                 const S: &str = $lit;
                 let mut tmp = [0u16; $lit.len() + 1];
@@ -27,12 +25,8 @@ macro_rules! wide {
     }};
 }
 
-/// Minimal `DllMain`.
-///
-/// You *must* use the exact `extern "system"` ABI so Windows can call it.
 #[no_mangle]
 pub extern "system" fn DllMain(_hinstance: HINSTANCE, reason: u32, _reserved: *mut c_void) -> BOOL {
-    // 1 == DLL_PROCESS_ATTACH
     if reason == 1 {
         unsafe {
             MessageBoxW(
@@ -43,5 +37,5 @@ pub extern "system" fn DllMain(_hinstance: HINSTANCE, reason: u32, _reserved: *m
             );
         }
     }
-    1 // TRUE => load succeeds
+    1
 }
