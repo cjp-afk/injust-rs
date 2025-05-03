@@ -50,8 +50,15 @@ To start, we use the [windows-sys](https://crates.io/crates/windows-sys) crate -
 
 Essentially, windows-sys, allows for lower overhead and memory space at the cost of type safety and error handling. However; this is something we can, and did implement within our code as needed. By doing this we reduce redundancy, and if in a real developemnt environment, create a more efficient injector.
 
-```rust
+So we've spoke about unsafety and Rust's iron fist rule about it. What does it look like?
 
+Our raw binding looks like this:
+
+```rust
+use windows_sys::Win32::System::Threading::OpenProcess;
+use windows_sys::Win32::Foundation::HANDLE;
+
+let raw: HANDLE = unsafe { OpenProcess(dwdaccess, inherithnd, pid) }
 ```
 
 
