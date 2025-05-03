@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "injust",
+    "inject-lib",
+    "example_target", "test_space"]
+
+resolver = "2"
