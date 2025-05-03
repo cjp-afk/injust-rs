@@ -1,7 +1,9 @@
+#![allow(dead_code)]
 mod core;
 mod ui;
 mod winapi;
 
+use core::engine::OxidisingAgent;
 use ui::app::App;
 use winapi::winsafe::safe_enum_windows;
 
@@ -61,9 +63,10 @@ fn main() -> Result<()> {
     )?;
     terminal.show_cursor()?;
 
-    // Surface the chosen process (could cascade into further automation)
     if let Some(proc) = app.selected() {
-        println!("Chosen ➜  {}  (pid {})", proc.title, proc.pid);
+        let dll_path: String = "/path/to/dll".to_string();
+        let mut agent: OxidisingAgent = OxidisingAgent::new(proc.pid, dll_path)?;
+        agent.oxidise()?;
     }
 
     Ok(())

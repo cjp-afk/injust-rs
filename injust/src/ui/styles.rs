@@ -4,11 +4,9 @@ use ratatui::style::Color;
 pub struct Theme {
     pub accent: Color,
     pub base_fg: Color,
-    pub base_bg: Color,
 }
 
 pub const CYAN_THEME: Theme = Theme {
     accent: Color::Rgb(0x00, 0xd7, 0xff), // bright-cyan (≈ #00D7FF)
     base_fg: Color::Reset,
-    base_bg: Color::Black,
 };

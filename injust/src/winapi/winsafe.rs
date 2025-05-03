@@ -1,11 +1,17 @@
+#![allow(dead_code)]
+
 use crate::winapi::types::{Process, SafeHANDLE};
+use std::ffi::c_void;
 
 use std::io;
 
-use windows_sys::Win32::Foundation::{CloseHandle, BOOL, HANDLE, HWND, LPARAM, RECT};
+use windows_sys::Win32::Foundation::{BOOL, HANDLE, HWND, LPARAM, RECT};
 use windows_sys::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
+use windows_sys::Win32::System::Diagnostics::Debug::WriteProcessMemory;
 use windows_sys::Win32::System::Threading::{
-    GetCurrentProcessId, OpenProcess, PROCESS_ACCESS_RIGHTS,
+    CreateRemoteThread, GetCurrentProcessId, OpenProcess, LPTHREAD_START_ROUTINE,
+    PROCESS_ACCESS_RIGHTS,
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::IsWindowEnabled;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -92,4 +98,54 @@ pub fn safe_open_process(
     let raw: HANDLE = unsafe { OpenProcess(dwdaccess, inherithnd, pid) };
 
     SafeHANDLE::new(raw)
+}
+
+pub fn safe_write_process_memory(
+    phandle: HANDLE,
+    m_base_address: *mut c_void,
+    path_w: &[u16],
+    byte_count: usize,
+    overwritten: *mut usize,
+) -> io::Result<()> {
+    let ok = unsafe {
+        WriteProcessMemory(
+            phandle,
+            m_base_address,
+            path_w.as_ptr() as *const _,
+            byte_count,
+            overwritten,
+        )
+    };
+    if ok == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+pub fn safe_create_remote_thread(
+    phandle: HANDLE,
+    lpthrdattr: Option<*const SECURITY_ATTRIBUTES>,
+    dwstksize: usize,
+    lpstaddr: LPTHREAD_START_ROUTINE,
+    lpparam: *const c_void,
+    dwcreationflags: u32,
+    lpthreadid: *mut u32,
+) -> io::Result<(SafeHANDLE)> {
+    let thandle = unsafe {
+        CreateRemoteThread(
+            phandle,
+            lpthrdattr.unwrap_or(std::ptr::null()),
+            dwstksize,
+            lpstaddr,
+            lpparam,
+            dwcreationflags,
+            lpthreadid,
+        )
+    };
+    if thandle.is_null() {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(SafeHANDLE::new(thandle)?)
+    }
 }

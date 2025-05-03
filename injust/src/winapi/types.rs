@@ -1,7 +1,9 @@
+#![allow(dead_code)]
+
 use std::ffi::c_void;
 use std::io;
 use std::ptr::null_mut;
-use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+use windows_sys::Win32::Foundation::{CloseHandle, BOOL, HANDLE};
 use windows_sys::Win32::System::Memory::{VirtualAllocEx, VirtualFreeEx, MEM_RELEASE};
 
 #[derive(Debug)]
@@ -30,7 +32,7 @@ impl SafeHANDLE {
     pub fn close(self) -> io::Result<()> {
         let handle = self.0;
 
-        std::mem::forget(self);
+        let _ = self;
         let ok = unsafe { CloseHandle(handle) };
         if ok == 0 {
             Err(io::Error::last_os_error())
@@ -43,25 +45,20 @@ impl SafeHANDLE {
 impl Drop for SafeHANDLE {
     fn drop(&mut self) {
         if !self.0.is_null() {
-            unsafe { CloseHandle(self.0) };
+            let _ = unsafe { CloseHandle(self.0) };
         }
     }
 }
 
-pub struct RemoteMemory<'a> {
-    handle: &'a SafeHANDLE,
+pub struct RemoteMemory {
+    handle: HANDLE,
     addr: *mut c_void,
     size: usize,
 }
 
-impl<'a> RemoteMemory<'a> {
-    pub fn new(
-        handle: &'a SafeHANDLE,
-        size: usize,
-        alloc_type: u32,
-        prot: u32,
-    ) -> io::Result<Self> {
-        let addr = unsafe { VirtualAllocEx(handle.as_raw(), null_mut(), size, alloc_type, prot) };
+impl RemoteMemory {
+    pub fn new(handle: HANDLE, size: usize, alloc_type: u32, prot: u32) -> io::Result<Self> {
+        let addr = unsafe { VirtualAllocEx(handle, null_mut(), size, alloc_type, prot) };
 
         if addr.is_null() {
             Err(io::Error::last_os_error())
@@ -77,10 +74,25 @@ impl<'a> RemoteMemory<'a> {
     pub fn size(&self) -> usize {
         self.size
     }
+
+    pub fn de_alloc(&mut self) -> io::Result<()> {
+        let ok: BOOL = if !self.handle.is_null() {
+            unsafe { VirtualFreeEx(self.handle, self.addr, 0, MEM_RELEASE) }
+        } else {
+            1
+        };
+        if ok == 0 {
+            Err(io::Error::last_os_error())
+        } else {
+            Ok(())
+        }
+    }
 }
 
-impl<'a> Drop for RemoteMemory<'a> {
+impl Drop for RemoteMemory {
     fn drop(&mut self) {
-        unsafe { VirtualFreeEx(self.handle.as_raw(), self.addr, 0, MEM_RELEASE) };
+        if !self.handle.is_null() {
+            unsafe { VirtualFreeEx(self.handle, self.addr, 0, MEM_RELEASE) };
+        }
     }
 }
