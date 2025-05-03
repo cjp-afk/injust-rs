@@ -1,14 +1,14 @@
-#![allow(dead_code)]
-
 use crate::winapi::types::{RemoteMemory, SafeHANDLE};
 use crate::winapi::winsafe::{
     get_loadlibraryw_addr, safe_create_remote_thread, safe_open_process,
     safe_wait_for_single_object, safe_write_process_memory,
 };
+
 use std::ffi::OsStr;
 use std::io;
 use std::os::windows::ffi::OsStrExt;
 use std::ptr::null_mut;
+
 use windows_sys::Win32::System::Memory::{MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE};
 use windows_sys::Win32::System::Threading::{
     INFINITE, PROCESS_CREATE_THREAD, PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION,

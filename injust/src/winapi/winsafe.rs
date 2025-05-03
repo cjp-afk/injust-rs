@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::winapi::types::{Process, SafeHANDLE};
 use std::ffi::c_void;
 
@@ -8,19 +6,23 @@ use std::mem::transmute;
 use std::ptr::null_mut;
 
 use windows_sys::core::PCSTR;
-use windows_sys::Win32::Foundation::{BOOL, HANDLE, HWND, LPARAM, RECT};
-use windows_sys::Win32::Foundation::{FARPROC, HINSTANCE};
+use windows_sys::Win32::Foundation::{BOOL, FARPROC, HANDLE, HINSTANCE, HWND, LPARAM, RECT};
 use windows_sys::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
-use windows_sys::Win32::System::Diagnostics::Debug::WriteProcessMemory;
-use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
-use windows_sys::Win32::System::Threading::{
-    CreateRemoteThread, GetCurrentProcessId, OpenProcess, LPTHREAD_START_ROUTINE,
-    PROCESS_ACCESS_RIGHTS,
+use windows_sys::Win32::System::{
+    Diagnostics::Debug::WriteProcessMemory,
+    LibraryLoader::{GetModuleHandleA, GetProcAddress},
+    Threading::{
+        CreateRemoteThread, GetCurrentProcessId, OpenProcess, LPTHREAD_START_ROUTINE,
+        PROCESS_ACCESS_RIGHTS,
+    },
 };
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::IsWindowEnabled;
-use windows_sys::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetWindow, GetWindowLongPtrW, GetWindowRect, GetWindowTextLengthW, GetWindowTextW,
-    GetWindowThreadProcessId, IsWindowVisible, GWL_EXSTYLE, GW_OWNER, WS_EX_TOOLWINDOW,
+use windows_sys::Win32::UI::{
+    Input::KeyboardAndMouse::IsWindowEnabled,
+    WindowsAndMessaging::{
+        EnumWindows, GetWindow, GetWindowLongPtrW, GetWindowRect, GetWindowTextLengthW,
+        GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible, GWL_EXSTYLE, GW_OWNER,
+        WS_EX_TOOLWINDOW,
+    },
 };
 
 pub fn safe_enum_windows() -> io::Result<Vec<Process>> {

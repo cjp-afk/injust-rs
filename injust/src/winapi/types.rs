@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::ffi::c_void;
 use std::io;
 use std::ptr::null_mut;

@@ -1,9 +1,8 @@
 use crate::ui::styles;
 use crate::winapi::types::Process;
-use ratatui::widgets::{Block, Borders};
 use ratatui::{
     prelude::*,
-    widgets::{List, ListItem, ListState},
+    widgets::{Block, Borders, List, ListItem, ListState},
 };
 use styles::{Theme, CYAN_THEME};
 
