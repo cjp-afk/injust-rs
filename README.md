@@ -1,147 +1,124 @@
-# Injust-rs
+# injust‑rs
 
-## A simple DLL injector built in rust
+> **Does the world need another DLL injector?**  
+> Probably not—but writing one is **an unbeatable way to interrogate how Windows really works**.  
+> `injust‑rs` is my tiny, opinionated, proof‑of‑concept DLL injector written in **Rust** with a sleek TUI powered by [ratatui].
 
-Currently this is a simple proof-of-concept injector built in rust for target windows applications. Build upon the [windows-rs](https://github.com/microsoft/windows-rs) bindings and [ratatui](https://github.com/ratatui/ratatui) UI.
-
-The injector follows a classic:
-
-
--- **OpenProcess** -> ```Handle``` -> **VirtualAlloEx** -> **WriteProcessMemory** -> **CreateRemoteThread**
-
-
-template for injection and execution.
-
-## Overview
-Currently this is not meant for use, nor is near production. I will continue to improve upon its functionality, potentially adding various injection methods and techniques.
-
-The reason I started this project was for the following concepts:
-
-> 1. To learn Rust :crab:
-> 2. To further my understanding of the windows api and its interactions within the OS
-> 3. To enforce stricter safety methods within my coding style from Rust's strict compile-time checker
-> 4. To have fun
 ---
-What does my project currently aim to implement?
 
-> ✔️ Safe wrappers abstracting ontop of the windows-rs crate
->
-> ✔️ Allows for arbritrary Dll injection into host processes using a terminal UI powered by ratatui
-> 
-> ✔️ An example DLL and Binary to test functionality
-> 
-> ✖️ Currently relies on a hardcoded Dll path
-> 
-> ✖️ No API or library for external use outside of this crate
->
-> ✖️ Lacks functionality outside of the essentials
---- 
-## The Code
+## ✨&nbsp;Motivation
 
-As previously afformentioned, this crate used a generic toolchain from the windows c abstrations to hook into a process, allocate and write to memory and fire a remote thread for execution
+* **Learn Rust**: borrow‑checker or bust.  
+* **Demystify the Windows API**: instead of cargo‑culting snippets, I wanted to walk every call on the wire.  
+* **Embrace safety _without_ ceremony**: keep `unsafe` narrowly scoped behind ergonomic wrappers.  
+* …and, honestly, **have fun hacking on low‑level stuff**.
 
-To start, we use the [windows-sys](https://crates.io/crates/windows-sys) crate -- not to confuse with the [windows](https://crates.io/crates/windows) crate. What's the difference?
+---
 
-**windows-sys** 
-> Raw bindings for C-style Windows APIs.
+## 🔨&nbsp;How it works — the classic chain
 
-**windows**
-> Safer bindings including C-style APIs as well as COM and WinRT APIs.
+| Step | API call | Purpose |
+|------|----------|---------|
+| 1 | `OpenProcess` | Gain a handle (`PROCESS_ALL_ACCESS`) to the target PID. |
+| 2 | `VirtualAllocEx` | Reserve **and** commit RW memory in the remote process for the DLL path. |
+| 3 | `WriteProcessMemory` | Copy our UTF‑16 encoded DLL path into that region. |
+| 4 | `CreateRemoteThread` | Start a thread at `LoadLibraryW`, passing the address of the path—Windows obligingly loads the DLL. |
+| 5 | `WaitForSingleObject` → `GetExitCodeThread` | (Optional) Observe completion & exit status. |
+| 6 | `VirtualFreeEx`, `CloseHandle` | Clean up remote memory and local handles. |
 
-Essentially, windows-sys, allows for lower overhead and memory space at the cost of type safety and error handling. However; this is something we can, and did implement within our code as needed. By doing this we reduce redundancy, and if in a real developemnt environment, create a more efficient injector.
+> Skeptical thought‑starter: **couldn’t anti‑cheat block every one of these calls?**  
+> They often try—experiment and find out.
 
-So we've spoke about unsafety and Rust's iron fist rule about it. What does it look like?
+---
 
-Our raw binding looks like this:
+## 📦&nbsp;Project structure
 
-```rust
-use windows_sys::Win32::System::Threading::OpenProcess;
-use windows_sys::Win32::Foundation::HANDLE;
-
-let raw: HANDLE = unsafe { OpenProcess(dwdaccess, inherithnd, pid) }
+```
+injust-rs/
+├─ Cargo.toml
+├─ inject-lib/        # Example DLL (pops a MessageBox on DllMain)
+├─ injust/            # CLI injector with ratatui UI
+└─ example_target/    # Tiny Win32 app to receive the injection
 ```
 
-The unsafe block indicates a section of code that the compiler will not enforce its strict ruling on, this should only be because the compiler *can't* check this code. In our case it's because we are calling to an external C binding, the compiler cannot physically verify code that does not live within Rust's scope. Additionally, the return type is a ```HANDLE``` -- This is an ALIAS in windows for a 
-```rust 
-*mut c_void
-``` 
-which is a raw pointer to mutable data, of an unknown layout.
+---
 
-So how do we fix this? Through creating safe wrappers and abstractions ontop of unsafe code. For this code snippet, there is both a functional wrapper and a type wrapper we can create. Lets walk through making these.
+## 🚀&nbsp;Building & running
 
-Here we wrap the ```HANDLE``` type alias in a struct
-```rust
-use windows_sys::Win32::Foundation::{CloseHandle, BOOL, HANDLE};
+```console
+# prerequisite: stable Rust toolchain on Windows 10/11 (x86_64)
+git clone https://github.com/cjp-afk/injust-rs.git
+cd injust-rs
 
-pub struct SafeHANDLE(HANDLE);
+# build everything in release mode
+cargo build --release
+
+# run the example target in one terminal
+target\release\example_target.exe
+
+# inject it from another
+target\release\injust.exe
 ```
 
-Then we can implement our constructor which takes in a raw instance of a windows ```HANDLE```. We pipe our raw ```HANDLE``` type to our constructor. If ```OpenProcess() -> HANDLE``` failed, it would return nothing. As such, we check if ```hnd``` is null, and call to the last os error. We return a ```Result<(HANDLE)>``` containing either the Error or the ```Ok(hnd)``` value.
+If you prefer names over PIDs, there’s a helper flag:
 
-We also add two methods. 
-```rust
-pub fn as_raw(&self) {...}
-//and
-pub fn close(self) {...}
+```console
+injust.exe --process-name example_target.exe --dll ...
 ```
-These methods are responsible for aiding the interactions within out code. Because the windows bindings expect a ```HANDLE``` not our ```SafeHANDLE```, we can use ```SafeHANDLE.as_raw() -> HANDLE``` which returns our raw HANDLE for use.
 
-```SafeHANDLE.close()``` clears and closes the handle, cleaning up. 
+---
 
+## 🛡️&nbsp;Safety abstractions
+
+The Windows API is *decidedly* not memory‑safe.  
+`injust‑rs` squirrels every raw handle away inside a thin wrapper:
 
 ```rust
-impl SafeHANDLE {
-    pub fn new(hnd: HANDLE) -> io::Result<Self> {
-        if hnd.is_null() {
-            Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "received null Windows handle",
-            ))
-        } else {
-            Ok(Self(hnd))
-        }
-    }
+pub struct SafeHandle(HANDLE);
 
-    pub fn as_raw(&self) -> HANDLE {
-        self.0
-    }
-
-    pub fn close(self) -> io::Result<()> {
-        let handle = self.0;
-
-        let _ = self;
-        let ok = unsafe { CloseHandle(handle) };
-        if ok == 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(())
-        }
-    }
+impl Drop for SafeHandle {
+    fn drop(&mut self) { unsafe { CloseHandle(self.0); } }
 }
 ```
 
+You still see `unsafe { … }`—but only at the wrapper edge, **never in the application logic**.  
+_Is that enough?_ Jury’s out, but it already caught double‑frees during my tests.
 
-```rust
-impl Drop for SafeHANDLE {
-    fn drop(&mut self) {
-        if !self.0.is_null() {
-            let _ = unsafe { CloseHandle(self.0) };
-        }
-    }
-}
-```
+---
 
+## 🛣&nbsp;Roadmap
 
+- [ ] Remove the _hard‑coded_ DLL path (CLI arg done, config TOML next)
+- [ ] Architecture guard (x86 ↔ x64 mismatch detection)
+- [ ] Publish a `libinjust` crate so other projects can call `inject(pid, path)`
+- [ ] Implement alternate techniques (APC queue, `SetWindowsHookEx`, reflective loading)
+- [ ] Add CI on Windows runners
 
+---
 
+## 🤔&nbsp;FAQ
 
+* **Q: Will this bypass antivirus?**  
+  A: **Unlikely.** Static DLL injection is a solved problem for defenders. Expect detection.
 
+* **Q: Can I use this against machines I don’t own?**  
+  A: _Absolutely not._ See the disclaimer below.
 
+---
 
+## 📜&nbsp;Disclaimer
 
+This repository is provided **solely for educational and research purposes**.  
+Running `injust‑rs` on computers you do not own _or_ do not have explicit permission to test **may violate local laws and the Computer Misuse Act** (or your jurisdiction’s equivalent).  
+You are responsible for obeying the law.
 
+---
 
+## 🪪&nbsp;License
 
+`injust‑rs` is licensed under the MIT License—see [`LICENSE`](LICENSE) for details.
 
+---
 
-
+*Happy hacking—question everything and verify twice.*  
+— **cjp**
