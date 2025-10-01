@@ -82,7 +82,6 @@ impl Drop for SafeHandle {
 ```
 
 You still see `unsafe { … }`—but only at the wrapper edge, **never in the application logic**.  
-_Is that enough?_ Jury’s out, but it already caught double‑frees during my tests.
 
 ---
 
